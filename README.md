@@ -106,14 +106,13 @@ Before you can start batch prompt generation, you **must follow this workflow ex
 1. Open GemiPersona (double-click `run.bat`)
 2. Look at the left sidebar and navigate to the **System Diagnosis** page
 3. Find the **"Start Engine"** button and click it
-4. Wait 30-60 seconds until you see the message: `Engine Started Successfully` ✅
+4. Wait a few seconds until you see the message: `Engine Started Successfully` ✅
 
 **Why this matters:** The automation engine is the "brain" that controls the browser. It must be running before anything else can work.
 
-**Next step:**
-Make sure your `config.json` file has `"headless": false`. This is critical because you need to SEE the browser during this learning phase. You cannot learn from what you cannot see!
+Once you've confirmed this setting, click **Launch Browser (Visual)** and GemiPersona will automatically launch a browser window. Now you need to log in to your Google Gemini account just like you normally would. Complete any 2FA verification or security checks. Once you're logged in and seeing the Gemini interface, your session is now active and ready for automation.
 
-Once you've confirmed this setting, GemiPersona will automatically launch a browser window. Now you need to log in to your Google Gemini account just like you normally would. Complete any 2FA verification or security checks. Once you're logged in and seeing the Gemini interface, your session is now active and ready for automation.
+try to play around and generate a few pictures before you close the windows (without log out). You can choose to close the browser windows as usual or use **Close Browser (Gracefully)** to turn off the browser.
 
 **Important:** You only need to log in this once per session. Your login session will be remembered and reused for all subsequent automation steps.
 
@@ -125,8 +124,10 @@ You cannot effectively troubleshoot problems later if you don't understand how t
 
 **What to do:**
 1. Stay on the **System Diagnosis** page
-2. Look for the **"Upload Files Test"** button and click it
-3. **Very important:** Watch the browser window carefully as it runs through the automation
+2. click **Launch Browser (Visual)** and observe browser windows
+3. Scroll down and fill in any text in **Edit Last Prompt" and dill in full path of the file to upload (optional)
+4. Look for the **"Upload Files Test"** button and click it
+5. **Very important:** Watch the browser window carefully as it runs through the automation
 
 **What you're watching for:**
 - See how fast the automation clicks (it's quick!)
@@ -150,26 +151,14 @@ Now that you understand what the automation does, it's time to make it faster an
 
 **What to do:**
 1. Close the browser window (or let it close if it finishes automatically)
-2. The engine keeps running in the background - you'll still see it in your terminal/command window
-3. Open your `config.json` file in a text editor
-4. Find the line that says `"headless": false`
-5. Change it to `"headless": true`
-6. Save the file
-
+2. Click **Launch browser (Headless)**
+3. The engine keeps running in the background - you'll still see it in your terminal/command window
+4. Click **Sign In Status** and observe **Engine Live Logs** indicate the the browser is log in.
+5. Repeat **"Upload Files Test"** button and **"Upload Test Redo"**. Observe **Engine Live Logs** and wait for the messages indicated that pictures download had been completed.
+   
 **What headless mode does:** Your browser no longer appears on screen. The automation still happens, but invisibly. This makes everything 30-50% faster because there's no window rendering overhead.
 
 **Why switch now?** You've already learned what happens in headed mode. Now you can safely use the faster headless mode. If something breaks, you already know what SHOULD be happening, which makes debugging easier.
-
----
-
-### Phase 4: Verify Everything Still Works in Headless Mode
-
-This is the moment of truth. Does the automation still work when you can't see it?
-
-**What to do:**
-1. Stay on the **System Diagnosis** page (you don't close the interface)
-2. Find and click the **"Check Sign In Status"** button
-3. This tells the engine to verify that you're still logged in to Gemini
 
 **Now watch the "Engine Live Logs" section very carefully.** This is where the system tells you what's happening behind the scenes.
 
@@ -190,7 +179,7 @@ You want to see these messages:
 
 ---
 
-### Phase 5: You're Ready for Batch Generation!
+### Phase 4: You're Ready for Batch Generation!
 
 If you've made it through all four phases with no errors, you're officially ready.
 
@@ -221,10 +210,10 @@ If you've made it through all four phases with no errors, you're officially read
 
 **What happens next?**
 Once you're comfortable with single-image generation:
-1. Prepare a list of prompts (10, 50, 100 - however many you want)
-2. Enter them into the batch interface
-3. Click "Start Batch Generation"
-4. Walk away! ☕ Go do something else for a few hours
+1. Enter Prompt
+2. Uoload Images
+3. Click "Start Loop"
+4. Walk away! ☕ Go do something else for few tens minutes
 5. Come back to find all your images with their prompts embedded in the metadata
 6. Now you can compare different prompts and their results side-by-side
 
