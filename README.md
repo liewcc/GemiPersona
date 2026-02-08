@@ -188,8 +188,9 @@ If you've made it through all four phases with no errors, you're officially read
 2. You'll see the main batch generation interface
 3. Start with something simple: enter a single test prompt in the text field
 4. Something like: "a red car on a sunny day" or "a cozy coffee shop"
-5. Click the **"Generate Single Image"** button (NOT a full batch yet)
-6. Wait and watch as GemiPersona:
+5. You can choose to upload one or multiple reference picture or just leave it empty
+6. Click the **"Send Once"** button (NOT a full batch yet)
+7. Wait and watch as GemiPersona:
    - Enters your prompt into the Gemini chat box
    - Clicks the send button
    - Waits for Gemini to process
@@ -199,7 +200,11 @@ If you've made it through all four phases with no errors, you're officially read
    - Saves the image with an organized filename
 
 **Verify the metadata was actually embedded:**
-1. Find your generated image in the output folder
+1. Navigate to the **Meta Data Reader** page (click the link in the left sidebar)
+2. drag the picture you want to ferify for meta data and check the information on the main panel.
+
+**Verify the metadata from file manager**
+1. Find your generated image in the output folder (make sure you have fill in output full path or else it will be saved in root directory)
 2. Right-click the image file
 3. Select **Properties** (on Windows)
 4. Go to the **Details** tab
@@ -227,11 +232,11 @@ The answer is: **No, and here's why:**
 
 - **Phase 1-2 (Headed mode + observation):** You learn exactly how the system works. When something breaks later, you'll recognize the problem immediately.
 
-- **Phase 3-4 (Headless verification):** You confirm that the invisible automation actually works. Many people skip this and then blame the software when headless mode doesn't work - but the issue was usually their own system.
+- **Phase 3 (Headless verification):** You confirm that the invisible automation actually works. Many people skip this and then blame the software when headless mode doesn't work - but the issue was usually their own system.
 
-- **Phase 5 (Single image test):** You verify the entire pipeline end-to-end: automation + image generation + metadata embedding. This proves everything is connected correctly.
+- **Phase 4 (Single image test):** You verify the entire pipeline end-to-end: automation + image generation + metadata embedding. This proves everything is connected correctly.
 
-This workflow takes about 30-45 minutes for first-time users, but it saves you HOURS of frustration later when you understand exactly what went wrong if something breaks.
+This workflow takes about 30 minutes for first-time users, but it saves you HOURS of frustration later when you understand exactly what went wrong if something breaks.
 
 ---
 ## 🛠 Prerequisites for Beginners
