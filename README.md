@@ -19,8 +19,8 @@
 - **Batch Comparison Ready**: Compare generated images with their exact prompts side-by-side
 
 #### 🤖 Hands-Free Batch Automation
-- **Fire and Forget**: Queue multiple prompts and let the software work while you do other tasks
-- **Continuous Operation**: Automatically cycles through prompts without manual intervention
+- **Fire and Forget**: Queue multiple redo and let the software work while you do other tasks
+- **Continuous Operation**: Automatically cycles through **redo-try again** without manual intervention
 - **No Manual Clicking**: Say goodbye to repetitive send-button clicking
 - **Unattended Execution**: Leave your computer, come back to finished batches
 
