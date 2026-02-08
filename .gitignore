@@ -2,7 +2,6 @@
 *.py[cod]
 *$py.class
 **/*!*/
-*.png
 output/
 .venv/
 temp_uploads/
