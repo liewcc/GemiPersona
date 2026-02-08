@@ -1,3 +1,5 @@
+![System Diagnosis Page](https://github.com/liewcc/GemiPersona/blob/main/img/1.png)
+
 # GemiPersona 🚀
 
 **The World's First Free Gemini Batch Image Generator with Automatic Prompt Embedding**
