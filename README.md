@@ -1,9 +1,5 @@
 # GemiPersona 🚀
 
-A streamlined automation tool designed for efficiency and ease of use.
-
-# GemiPersona 🚀
-
 **The World's First Free Gemini Batch Image Generator with Automatic Prompt Embedding**
 
 > 🎯 **Unique Feature**: Automatically embed AI prompts into image metadata while batch-generating images through Google Gemini without API costs
