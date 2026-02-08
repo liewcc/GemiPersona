@@ -6,7 +6,6 @@
 output/
 .venv/
 temp_uploads/
-config.json
 Gems_bookmark.json
 engine.log
 watcher_engine/gemini_user_data/

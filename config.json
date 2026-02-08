@@ -1,0 +1,17 @@
+{
+    "engine_version": "V2.8.1",
+    "url": "https://gemini.google.com/app",
+    "headless": false,
+    "save_dir": "",
+    "name_prefix": "",
+    "name_padding": 2,
+    "name_start": 1,
+    "last_prompt": "",
+    "upload_task": [],
+    "show_debug_console": true,
+    "selectors": {
+        "textbox": "div[role=\"textbox\"]",
+        "send_btn": "button[aria-label*=\"Send\"]",
+        "img_list": "img"
+    }
+}
