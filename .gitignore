@@ -1,0 +1,16 @@
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/*!*/
+*.png
+output/
+.venv/
+temp_uploads/
+config.json
+Gems_bookmark.json
+engine.log
+watcher_engine/gemini_user_data/
+watcher_engine/state.json
+watcher_engine/engine.log
+watcher_engine/actions_lib/upload_test_redo 2.3.1.py
+watcher_engine/actions_lib/__init__.py

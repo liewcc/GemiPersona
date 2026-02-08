@@ -1,0 +1,9 @@
+streamlit
+playwright
+Pillow
+psutil
+playwright-stealth
+streamlit-autorefresh
+
+
+
