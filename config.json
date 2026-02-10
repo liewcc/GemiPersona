@@ -1,17 +1,42 @@
 {
     "engine_version": "V2.8.1",
     "url": "https://gemini.google.com/app",
-    "headless": false,
+    "headless": true,
     "save_dir": "",
     "name_prefix": "",
     "name_padding": 2,
     "name_start": 1,
     "last_prompt": "",
-    "upload_task": [],
+    "upload_task": [
+        ""
+    ],
     "show_debug_console": true,
     "selectors": {
         "textbox": "div[role=\"textbox\"]",
         "send_btn": "button[aria-label*=\"Send\"]",
         "img_list": "img"
-    }
+    },
+    "upload_file_path": "",
+    "declined_msg": [
+        "cannot generate",
+        "policy",
+        "但是這個不行",
+        "我可以生成真实人物的图片",
+        "描绘真实人物",
+        "無法生成",
+        "真實人物",
+        "安全提示",
+        "违反了我的相关規範",
+        "協助你將想法化為現實"
+    ],
+    "quota_exceeded_msg": [
+        "quota exceeded",
+        "daily limit",
+        "reached your limit",
+        "制作更多图像",
+        "请明天再来",
+        "我无法为您创建更多",
+        "我今天无法"
+    ],
+    "loop_count": 0
 }
