@@ -1,4 +1,5 @@
-# Version: 1.3.1
+# Version: 1.3.2
+# Add explanation
 # Description: Finalized startup logic. Ensures 'temp_uploads' is created non-destructively 
 # at the very beginning of execution without affecting existing files.
 
@@ -136,7 +137,7 @@ def file_preview_grid(task_list):
 
     st.subheader(f"Album View ({len(st.session_state.uploaded_files_info)} items)")
     
-    if st.button("🗑️ Clear All Files", key="clear_all_btn", width='stretch', type="primary"):
+    if st.button("🗑️ Clear All Files (including delete upload file lists)", key="clear_all_btn", width='stretch', type="primary"):
         clear_all_files()
     
     st.divider()
