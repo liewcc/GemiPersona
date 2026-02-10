@@ -15,12 +15,11 @@ try:
 except ImportError:
     from . import browser_crtl_logic as bcl
 
-# Version: V5.1.9 (Redo Specialized)
-# Update: Fixed Redo logic by mirroring the 2-step menu trigger (Regenerate -> Try again).
-# Logic: Follows the [FAIL]/[SUCCESS] convention for process control.
+# Version: V5.1.14 (Redo Specialized)
+# Update: Refactored MONITORING LOOP to pass logger every turn to catch refusal text instantly.
 
 async def run(page, logger, config_path):
-    logger.info(">>> [STATUS] Running Upload_Test_Redo V5.1.9")
+    logger.info(">>> [STATUS] Running Upload_Test_Redo V5.1.14")
 
     try:
         # --- [STEP 0: Load Config] ---
@@ -38,7 +37,6 @@ async def run(page, logger, config_path):
         padding = cfg.get("name_padding", 2)
 
         # --- [STEP 1: Trigger Redo Menu] ---
-        # Mirroring V2.3.1 trigger logic
         menu_triggered = await page.evaluate('''async () => {
             const findTrigger = () => {
                 return document.querySelector('button[aria-label*="Regenerate"]') || 
@@ -61,7 +59,6 @@ async def run(page, logger, config_path):
         await asyncio.sleep(1.5)
 
         # --- [STEP 2: Click 'Try again'] ---
-        # Selecting from overlay menu
         redo_clicked = await page.evaluate('''async () => {
             const overlay = document.querySelector('.cdk-overlay-pane');
             if (!overlay) return false;
@@ -77,25 +74,33 @@ async def run(page, logger, config_path):
         
         logger.info(">> Redo triggered successfully. Monitoring response...")
 
-        # --- [STEP 3: Monitoring with V5.1.9 Refusal Detection] ---
+        # --- MONITORING LOOP ---
         status = "waiting"
-        for i in range(60):
-            # Using shared logic for bilingual refusal and image detection
-            status = await bcl.check_response_status(page, logger if i % 5 == 0 else None)
+        for i in range(15):
+            # Pass logger every 2 seconds to ensure no message is missed due to loop frequency
+            status = await bcl.check_response_status(page, logger)
             
             if status == "refused":
-                logger.error("[FAIL] Redo blocked by policy.")
+                logger.error("[FAIL] Declined to generate.")
+                return False
+            elif status == "quota_exceeded":
+                logger.error("[END] Quota Limit detected.")
                 return False
             elif status == "success":
                 logger.info(">> [SIGNAL] Images detected. Starting download...")
                 break
+                
+            if i % 5 == 0 and status in ["waiting", "generating"]:
+                logger.info(f">> [MONITOR] Status: {status} (Attempt {i+1}/60)")
+                
             await asyncio.sleep(2)
+        # --- END MONITORING LOOP ---
 
         if status != "success":
             logger.error("[FAIL] Timeout: Redo action failed to produce images.")
             return False
 
-        # --- [STEP 4: Atomic Download] ---
+        # --- DOWNLOAD PROCESS ---
         last_response = await page.query_selector('model-response:last-of-type')
         imgs = await last_response.query_selector_all('img') if last_response else []
         dl_count = 0
