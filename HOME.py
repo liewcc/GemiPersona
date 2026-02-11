@@ -9,11 +9,12 @@ from PIL import Image
 from datetime import datetime
 
 # --- 1. CONFIGURATION & VERSIONING ---
-# Version V26.2.13: 
-# - Disabled Loop Limit input while loop is active to prevent config conflicts.
-# - Streamlined limit check logic to use config directly.
-# - Maintains width='stretch' and English UI/Comments.
-APP_VERSION = "V26.2.13"
+# Version V26.2.16: 
+# - Integrated 'fail_count' for tracking server-side crashes/resets.
+# - UI: Added 'Reset' metric in sidebar next to 'Decline'.
+# - Logic: Auto-triggers 'upload_test' action when '[RESET_REQUIRED]' is detected in logs to refresh page.
+# - Maintained width='stretch' and English UI/Comments.
+APP_VERSION = "V26.2.16"
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 ENGINE_DIR = os.path.join(ROOT_DIR, "watcher_engine")
 DEFAULT_OUTPUT_DIR = os.path.join(ROOT_DIR, "browser_outputs")
@@ -64,11 +65,12 @@ def initialize_config():
     return disk_cfg
 
 def get_counter():
-    return load_json_file(COUNTER_FILE, {"total_count": 0, "image_save": 0, "image_decline": 0, "line_offset": 0})
+    # Added fail_count to the default schema
+    return load_json_file(COUNTER_FILE, {"total_count": 0, "image_save": 0, "image_decline": 0, "fail_count": 0, "line_offset": 0})
 
-def update_counter(total, saved, decline, offset):
+def update_counter(total, saved, decline, fail, offset):
     data = {
-        "total_count": total, "image_save": saved, "image_decline": decline, "line_offset": offset
+        "total_count": total, "image_save": saved, "image_decline": decline, "fail_count": fail, "line_offset": offset
     }
     save_json_file(COUNTER_FILE, data)
     return data
@@ -109,10 +111,12 @@ with st.sidebar:
     @st.fragment(run_every="2s")
     def render_counter_metrics():
         cnt = get_counter()
-        c1, c2, c3 = st.columns(3)
+        # Display Total, Saved, Decline, and the new Reset (fail_count)
+        c1, c2, c3, c4 = st.columns(4)
         c1.metric("Total", cnt['total_count'])
         c2.metric("Saved", cnt['image_save'])
         c3.metric("Decline", cnt['image_decline'])
+        c4.metric("Reset", cnt.get('fail_count', 0))
     
     render_counter_metrics()
 
@@ -148,7 +152,7 @@ with st.sidebar:
     render_sidebar_status()
     st.divider()
 
-    # --- Loop Limit Control (Locked during Active Loop) ---
+    # --- Loop Limit Control ---
     def update_loop_count():
         try:
             new_val = int(st.session_state.loop_count_input)
@@ -164,14 +168,22 @@ with st.sidebar:
                   value=str(st.session_state.config.get("loop_count", 0)), 
                   key="loop_count_input", 
                   on_change=update_loop_count,
-                  disabled=st.session_state.loop_active) # Prevent modification during loop
+                  disabled=st.session_state.loop_active)
     
     st.divider()
 
     def auto_save_config():
+        new_path = st.session_state.storage_input
+        if new_path and not os.path.exists(new_path):
+            try:
+                os.makedirs(new_path, exist_ok=True)
+                st.toast(f"Directory created: {new_path}", icon="📂")
+            except Exception as e:
+                st.error(f"Failed to create directory: {e}")
+
         updates = {
             "url": st.session_state.url_input,
-            "save_dir": st.session_state.storage_input,
+            "save_dir": new_path,
             "name_prefix": st.session_state.prefix_input,
             "name_padding": st.session_state.padding_input,
             "name_start": st.session_state.start_input
@@ -240,6 +252,7 @@ def render_live_status():
                 cur_total = cnt['total_count']
                 cur_saved = cnt['image_save']
                 cur_decline = cnt['image_decline']
+                cur_fail = cnt.get('fail_count', 0)
                 
                 processed_count = 0
                 for line in new_lines:
@@ -250,7 +263,7 @@ def render_live_status():
                     if st.session_state.loop_active:
                         if "Executing Action:" in clean_line:
                             if not st.session_state.is_first_run:
-                                cur_decline = cur_total - cur_saved
+                                cur_decline = cur_total - cur_saved - cur_fail
                             cur_total += 1
                             st.session_state.is_first_run = False
                         if "Saved:" in clean_line:
@@ -259,10 +272,10 @@ def render_live_status():
                         if "Saved:" in clean_line:
                             cur_saved += 1
                         if "[SUCCESS]" in clean_line or "[FAIL]" in clean_line:
-                            cur_decline = cur_total - cur_saved
+                            cur_decline = cur_total - cur_saved - cur_fail
                 
                 if processed_count > 0:
-                    update_counter(cur_total, cur_saved, cur_decline, offset + processed_count)
+                    update_counter(cur_total, cur_saved, cur_decline, cur_fail, offset + processed_count)
 
                 last_line = all_lines[-1].strip()
                 if "[END]" in last_line and last_line != st.session_state.last_processed_log_line:
@@ -271,13 +284,30 @@ def render_live_status():
                     st.rerun()
                     return
 
+                # --- AUTO-RECOVERY LOGIC ---
                 if st.session_state.loop_active and ("[SUCCESS]" in last_line or "[FAIL]" in last_line) and last_line != st.session_state.last_processed_log_line:
                     disk_cfg = load_json_file(CONFIG_FILE, {})
-                    save_json_file(TASK_FILE, {
-                        "action": "upload_test_redo",
-                        "subject": disk_cfg.get('last_prompt', ""),
-                        "timestamp": time.time()
-                    })
+                    task_list = disk_cfg.get("upload_task", [])
+                    
+                    if "[RESET_REQUIRED]" in last_line:
+                        # Server crash/Reset detected: Increase fail_count and trigger full upload_test (page refresh)
+                        cur_fail += 1
+                        update_counter(cur_total, cur_saved, cur_decline, cur_fail, offset + processed_count)
+                        save_json_file(TASK_FILE, {
+                            "action": "upload_test", # Reset page and re-enter prompt
+                            "subject": disk_cfg.get('last_prompt', ""),
+                            "timestamp": time.time(),
+                            "attachments": task_list
+                        })
+                        st.toast("Server Reset Detected. Refreshing page...", icon="🔄")
+                    else:
+                        # Normal Success or other Failures: Continue with Redo
+                        save_json_file(TASK_FILE, {
+                            "action": "upload_test_redo",
+                            "subject": disk_cfg.get('last_prompt', ""),
+                            "timestamp": time.time()
+                        })
+                    
                     st.session_state.last_processed_log_line = last_line
 
                 if "error" in last_line.lower() or "[FAIL]" in last_line: st.error(last_line)
@@ -331,7 +361,8 @@ with btn_col2:
             start_off = 0
             if os.path.exists(LOG_FILE):
                 with open(LOG_FILE, "r", encoding="utf-8") as f: start_off = len(f.readlines())
-            update_counter(0, 0, 0, start_off)
+            # Initialize/Reset all counters including fail_count
+            update_counter(0, 0, 0, 0, start_off)
             st.session_state.is_first_run = True 
             save_json_file(TASK_FILE, {"action": "upload_test", "subject": input_prompt, "timestamp": time.time(), "attachments": task_list})
             st.session_state.loop_active = True
@@ -354,6 +385,19 @@ def render_gallery():
                         with Image.open(fpath) as img:
                             if "Prompt" in img.info: has_meta = True
                     except: pass
+                    
+                    # Image Preview
                     st.image(fpath, width='stretch')
-                    st.caption(f"{os.path.basename(fpath)}{' 📝' if has_meta else ''}")
+                    
+                    # File Name Button with Icon and Metadata indicator
+                    fname = os.path.basename(fpath)
+                    btn_label = f"🔍 {fname}{' 📝' if has_meta else ''}"
+                    
+                    if st.button(btn_label, key=f"gal_btn_{i}", width='stretch'):
+                        try:
+                            # Open with Windows default image viewer
+                            os.startfile(os.path.normpath(fpath))
+                        except Exception as e:
+                            st.error(f"Error opening image: {e}")
+
 render_gallery()

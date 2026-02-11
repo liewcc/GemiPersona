@@ -80,7 +80,7 @@ async def run(page, logger, config_path):
         # --- END MONITORING LOOP ---
 
         if status != "success":
-            logger.error("[FAIL] Timeout or Image failure: No image signal detected.")
+            logger.error("[FAIL] [RESET_REQUIRED] Timeout or Image failure: No image signal detected.")
             return False
 
         # --- DOWNLOAD PROCESS ---

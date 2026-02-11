@@ -53,7 +53,7 @@ async def run(page, logger, config_path):
         }''')
 
         if not menu_triggered:
-            logger.error("[FAIL] Redo menu trigger not found.")
+            logger.error("[FAIL] [RESET_REQUIRED] Redo menu trigger not found.")
             return False
             
         await asyncio.sleep(1.5)
@@ -97,7 +97,7 @@ async def run(page, logger, config_path):
         # --- END MONITORING LOOP ---
 
         if status != "success":
-            logger.error("[FAIL] Timeout: Redo action failed to produce images.")
+            logger.error("[FAIL] [RESET_REQUIRED] Timeout: Redo action failed to produce images.")
             return False
 
         # --- DOWNLOAD PROCESS ---
