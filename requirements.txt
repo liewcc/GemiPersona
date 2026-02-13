@@ -4,6 +4,6 @@ Pillow
 psutil
 playwright-stealth
 streamlit-autorefresh
-
-
-
+piexif
+streamlit-drawable-canvas
+requests

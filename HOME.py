@@ -9,11 +9,13 @@ from PIL import Image
 from datetime import datetime
 
 # --- 1. CONFIGURATION & VERSIONING ---
-# Version V26.2.12: 
+# Version V26.2.13: 
+# - repair Storage Path auto generate new folder feature
+# - repair preview upload picture file name list
 # - Logic Update: Changed 'Decline' calculation from subtraction formula to keyword detection.
 # - Keyword: Increments image_decline if "Declined" is found in the log.
 # - UI: Maintained English interface and 'stretch' width compliance.
-APP_VERSION = "V26.2.12"
+APP_VERSION = "V26.2.13"
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 ENGINE_DIR = os.path.join(ROOT_DIR, "watcher_engine")
 DEFAULT_OUTPUT_DIR = os.path.join(ROOT_DIR, "browser_outputs")
@@ -199,6 +201,32 @@ with st.sidebar:
 
     def auto_save_config():
         new_path = st.session_state.storage_input
+        
+    # --- 新增：检查并创建文件夹 ---
+        if new_path: # 确保路径不为空
+            try:
+                normalized_path = os.path.normpath(new_path)
+                if not os.path.exists(normalized_path):
+                    os.makedirs(normalized_path)
+                    st.toast(f"已创建新目录: {normalized_path}", icon="📁")
+            except Exception as e:
+                st.error(f"无法创建文件夹: {e}")
+                return # 如果创建失败，建议中断保存以免后续报错
+        # ---------------------------
+
+        updates = {
+            "url": st.session_state.url_input,
+            "save_dir": new_path,
+            "name_prefix": st.session_state.prefix_input,
+            "name_padding": st.session_state.padding_input,
+            "name_start": st.session_state.start_input
+        }
+        current_cfg = load_json_file(CONFIG_FILE, st.session_state.config)
+        current_cfg.update(updates)
+        save_json_file(CONFIG_FILE, current_cfg)
+        st.session_state.config = current_cfg
+        
+        
         updates = {
             "url": st.session_state.url_input,
             "save_dir": new_path,
@@ -348,10 +376,18 @@ if task_list:
     for i, img_path in enumerate(task_list):
         with cols[i % 10]:
             if os.path.exists(img_path):
-                st.image(img_path, width='stretch')
+                # 提取文件名 (例如: "image.png")
+                file_name = os.path.basename(img_path) 
+                
+                # 在预览图下方增加文件名显示
+                st.image(img_path, width='stretch', caption=file_name) 
+                
                 if st.button("X", key=f"del_{i}", width='stretch'):
-                    task_list.remove(img_path); cfg = load_json_file(CONFIG_FILE, st.session_state.config)
-                    cfg["upload_task"] = task_list; save_json_file(CONFIG_FILE, cfg); st.rerun()
+                    task_list.remove(img_path)
+                    cfg = load_json_file(CONFIG_FILE, st.session_state.config)
+                    cfg["upload_task"] = task_list
+                    save_json_file(CONFIG_FILE, cfg)
+                    st.rerun()
 
 btn_col1, btn_col2 = st.columns(2)
 with btn_col1:
