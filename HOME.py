@@ -9,13 +9,12 @@ from PIL import Image
 from datetime import datetime
 
 # --- 1. CONFIGURATION & VERSIONING ---
-# Version V26.2.13: 
-# - repair Storage Path auto generate new folder feature
-# - repair preview upload picture file name list
-# - Logic Update: Changed 'Decline' calculation from subtraction formula to keyword detection.
-# - Keyword: Increments image_decline if "Declined" is found in the log.
+# Version V26.2.17: 
+# - Stability Fix: Based on V26.2.13 logic.
+# - Core Fix: Prevent Reset/Loop counters from jumping during first start.
+# - Defense Logic: Reset will ONLY increment if BOTH memory and physical counter.json show Total > 0.
 # - UI: Maintained English interface and 'stretch' width compliance.
-APP_VERSION = "V26.2.13"
+APP_VERSION = "V26.2.17"
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 ENGINE_DIR = os.path.join(ROOT_DIR, "watcher_engine")
 DEFAULT_OUTPUT_DIR = os.path.join(ROOT_DIR, "browser_outputs")
@@ -201,32 +200,16 @@ with st.sidebar:
 
     def auto_save_config():
         new_path = st.session_state.storage_input
-        
-    # --- 新增：检查并创建文件夹 ---
-        if new_path: # 确保路径不为空
+        if new_path:
             try:
                 normalized_path = os.path.normpath(new_path)
                 if not os.path.exists(normalized_path):
                     os.makedirs(normalized_path)
-                    st.toast(f"已创建新目录: {normalized_path}", icon="📁")
+                    st.toast(f"Created directory: {normalized_path}", icon="📁")
             except Exception as e:
-                st.error(f"无法创建文件夹: {e}")
-                return # 如果创建失败，建议中断保存以免后续报错
-        # ---------------------------
+                st.error(f"Failed to create folder: {e}")
+                return
 
-        updates = {
-            "url": st.session_state.url_input,
-            "save_dir": new_path,
-            "name_prefix": st.session_state.prefix_input,
-            "name_padding": st.session_state.padding_input,
-            "name_start": st.session_state.start_input
-        }
-        current_cfg = load_json_file(CONFIG_FILE, st.session_state.config)
-        current_cfg.update(updates)
-        save_json_file(CONFIG_FILE, current_cfg)
-        st.session_state.config = current_cfg
-        
-        
         updates = {
             "url": st.session_state.url_input,
             "save_dir": new_path,
@@ -315,11 +298,9 @@ def render_live_status():
                         if "Executing Action:" in clean_line:
                             cur_total += 1
                     
-                    # Track Saved images keyword
                     if "Saved:" in clean_line:
                         cur_saved += 1
                     
-                    # NEW: Track Declined images keyword
                     if "Declined" in clean_line:
                         cur_decline += 1
                 
@@ -338,7 +319,11 @@ def render_live_status():
                     task_list = disk_cfg.get("upload_task", [])
                     
                     if "[RESET_REQUIRED]" in last_line:
-                        cur_fail += 1
+                        # Defensive Fix: Read physical counter.json to double check the state
+                        physical_cnt = get_counter()
+                        # Increment reset only if memory AND physical counts indicate we are past the start phase
+                        if cur_total > 0 and physical_cnt.get('total_count', 0) > 0:
+                            cur_fail += 1
                         update_counter(cur_total, cur_saved, cur_decline, cur_fail, offset + processed_count)
                         save_json_file(TASK_FILE, {"action": "upload_test", "subject": disk_cfg.get('last_prompt', ""), "timestamp": time.time(), "attachments": task_list})
                     else:
@@ -376,12 +361,8 @@ if task_list:
     for i, img_path in enumerate(task_list):
         with cols[i % 10]:
             if os.path.exists(img_path):
-                # 提取文件名 (例如: "image.png")
                 file_name = os.path.basename(img_path) 
-                
-                # 在预览图下方增加文件名显示
                 st.image(img_path, width='stretch', caption=file_name) 
-                
                 if st.button("X", key=f"del_{i}", width='stretch'):
                     task_list.remove(img_path)
                     cfg = load_json_file(CONFIG_FILE, st.session_state.config)
