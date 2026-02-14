@@ -4,19 +4,19 @@ import json
 import re
 from playwright.async_api import TimeoutError
 
-# Version: V5.4.0 (Reset Signal & Timeout Resilience)
-# Update: Integrated "[FAIL] [RESET_REQUIRED]" signal for system-level resets.
-# Update: Added URL tracking and multi-selector fallback for text input detection.
-# Update: Maintained English comments and UI per user personalization instructions.
+# Version: V5.4.3 (Post-Log Signal Injection)
+# Update: Added a secondary explicit log entry for [RESET_REQUIRED] after any exception 
+#         to ensure it's the final line, bypassing Playwright's multi-line debug logs.
+# Update: Maintained English comments and UI per user instructions.
 
 async def start_new_chat(page, logger, config_path):
     """
     Navigates to the target URL and waits for the interaction textbox.
-    Triggers a reset signal if navigation or element detection fails.
     """
     try:
         if not os.path.exists(config_path):
-            logger.error(f"[FAIL] [RESET_REQUIRED] Config missing: {config_path}")
+            logger.error("Config missing.")
+            logger.error("[FAIL] [RESET_REQUIRED]")
             return False
             
         with open(config_path, "r", encoding="utf-8") as f:
@@ -25,10 +25,8 @@ async def start_new_chat(page, logger, config_path):
         target_url = cfg.get("url")
         logger.info(f">> Navigating to: {target_url}")
         
-        # Increased wait_until to 'networkidle' for better stability in 2026 web environments
         await page.goto(target_url, wait_until="domcontentloaded", timeout=60000)
         
-        # Multi-selector fallback to handle UI updates (Textbox or ContentEditable)
         try:
             selectors = ['[role="textbox"]', '[contenteditable="true"]', 'textarea[aria-label="Prompt"]']
             combined_selector = ", ".join(selectors)
@@ -36,17 +34,18 @@ async def start_new_chat(page, logger, config_path):
             logger.info(">> [SIGNAL] Textbox detected.")
             return True
         except TimeoutError:
-            current_url = page.url
-            logger.error(f"[FAIL] [RESET_REQUIRED] UI Timeout. Current URL: {current_url}")
+            logger.error(f"UI Timeout at {page.url}")
+            logger.error("[FAIL] [RESET_REQUIRED]")
             return False
 
     except Exception as e:
-        logger.error(f"[FAIL] [RESET_REQUIRED] Navigation crash: {e}")
+        logger.error(f"Navigation crash: {e}")
+        logger.error("[FAIL] [RESET_REQUIRED]")
         return False
 
 async def handle_file_upload(page, logger, upload_tasks):
     """
-    Handles file upload tasks via the 'add' icon and file chooser.
+    Handles file upload tasks. Injects a final reset line after any error log.
     """
     if not upload_tasks: return True
     for file_path in upload_tasks:
@@ -59,7 +58,6 @@ async def handle_file_upload(page, logger, upload_tasks):
         try:
             async with page.expect_file_chooser(timeout=30000) as fc_info:
                 logger.info(f">> Preparing to upload: {file_name}")
-                # Using more generic icon selectors to prevent breakage
                 await page.evaluate('''() => {
                     const gemsIcon = document.querySelector('mat-icon[data-mat-icon-name="add_2"]') || 
                                    document.querySelector('mat-icon[fonticon="add"]');
@@ -76,13 +74,16 @@ async def handle_file_upload(page, logger, upload_tasks):
             logger.info(f">> [SUCCESS] {file_name} uploaded.")
             await asyncio.sleep(4.0)
         except Exception as e:
-            logger.error(f"[FAIL] Upload error: {e}")
+            # First, print the messy Playwright error with all the '==== logs ===='
+            logger.error(f"Upload error: {e}")
+            # Second, print the clean signal so it's the absolute last line in the log file
+            logger.error("[FAIL] [RESET_REQUIRED]")
             return False
     return True
 
 async def check_response_status(page, logger=None):
     """
-    Monitors Gemini's response status, handling quota and refusal keywords.
+    Monitors Gemini's response status.
     """
     config_path = "config.json"
     declined_kws = ["违反", "规范", "点子", "协助你将想法化为现实"] 
@@ -95,19 +96,15 @@ async def check_response_status(page, logger=None):
                 declined_kws.extend(cfg.get("declined_msg", []))
                 quota_kws.extend(cfg.get("quota_exceeded_msg", []))
         except Exception as e:
-            if logger:
-                logger.error(f">> [ERROR] Config load failed: {e}")
+            if logger: logger.error(f">> [ERROR] Config load failed: {e}")
 
     eval_data = {"declined": declined_kws, "quota": quota_kws}
 
     data = await page.evaluate('''(args) => {
         const bodyTextLower = document.body.innerText.toLowerCase();
-        
-        // 1. Generation detection (Updated for Nano Banana)
         const isGenerating = bodyTextLower.includes("nano banana") || !!document.querySelector('mat-progress-bar');
         if (isGenerating) return { status: "generating", text: "..." };
 
-        // 2. Response extraction
         const responses = Array.from(document.querySelectorAll('model-response'));
         if (responses.length === 0) return { status: "waiting", text: "" };
         
@@ -115,42 +112,31 @@ async def check_response_status(page, logger=None):
         const literalText = lastResp.innerText.trim(); 
         const lowerText = literalText.toLowerCase();
 
-        // 3. Quota check
         for (const kw of args.quota) {
             if (lowerText.includes(kw.toLowerCase())) return { status: "quota_exceeded", text: literalText };
         }
-
-        // 4. Policy refusal check
         for (const kw of args.declined) {
             if (lowerText.includes(kw.toLowerCase())) return { status: "refused", text: literalText };
         }
-
-        // 5. Image success check
         if (!!lastResp.querySelector('img')) return { status: "success", text: literalText };
 
         return (literalText.length > 0) ? { status: "waiting", text: literalText } : { status: "waiting", text: "" };
     }''', eval_data)
 
     if logger and data['text']:
-        # Text flattening to ensure log line integrity
         flat_text = data['text'].replace('\n', ' ').replace('\r', ' ')
         clean_text = " ".join(flat_text.split())
         msg = f"Gemini says: \"{clean_text}\""
-        
-        if data['status'] == "refused":
-            logger.warning(f">> [DETECTION] Blocked. {msg}")
-        elif data['status'] == "quota_exceeded":
-            logger.error(f">> [DETECTION] Quota Limit. {msg}")
-        elif data['status'] == "success":
-            logger.info(f">> [DETECTION] Success. {msg}")
-        elif data['status'] == "waiting" and data['text']:
-            logger.info(f">> [DETECTION] {msg}")
+        if data['status'] == "refused": logger.warning(f">> [DETECTION] Blocked. {msg}")
+        elif data['status'] == "quota_exceeded": logger.error(f">> [DETECTION] Quota Limit. {msg}")
+        elif data['status'] == "success": logger.info(f">> [DETECTION] Success. {msg}")
+        elif data['status'] == "waiting" and data['text']: logger.info(f">> [DETECTION] {msg}")
 
     return data['status']
 
 async def ensure_tool_selected(page, logger, tool_keyword="create image"):
     """
-    Ensures a specific UI tool is selected based on keyword.
+    Ensures a specific UI tool is selected.
     """
     try:
         visible = await page.evaluate(f'''(kw) => {{
@@ -161,5 +147,4 @@ async def ensure_tool_selected(page, logger, tool_keyword="create image"):
         }}''', tool_keyword)
         if visible: logger.info(f">> Tool selected: {tool_keyword}")
         return visible
-    except Exception: 
-        return False
+    except Exception: return False
